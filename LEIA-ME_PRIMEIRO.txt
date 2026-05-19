@@ -1,0 +1,38 @@
+===================================================
+      BTC LOTTERY MINER - MANUAL DE INSTALAÇÃO
+===================================================
+
+Parabéns por adquirir o BTC Lottery Miner!
+Este software permite que o seu computador participe
+do Solo Mining de Bitcoin. Isso significa que ele vai
+"tentar a sorte" para encontrar o próximo bloco da rede.
+Se conseguir, o prêmio integral de 3.125 BTC irá direto
+para a sua carteira!
+
+---------------------------------------------------
+PASSO A PASSO PARA INICIAR:
+---------------------------------------------------
+
+0. IMPORTANTE: Antes de extrair, adicione a pasta nas Exceções do seu Antivírus (Windows Defender) ou desative-o temporariamente. Mineradores são sempre detectados como "falso-positivo" pelos antivírus e podem ser apagados automaticamente!
+1. Extraia esta pasta ZIP para a sua Área de Trabalho ou Documentos.
+2. Dê 2 cliques no arquivo "INICIAR.bat".
+   (Ele pode pedir permissão de Administrador na primeira vez para instalar os requisitos).
+3. O painel abrirá automaticamente no seu navegador.
+4. Clique em "MINHA CARTEIRA BTC" e cole o seu endereço de Bitcoin.
+   (IMPORTANTE: O endereço DEVE ser da rede Bitcoin principal. Geralmente começa com "bc1q", "1" ou "3". Não use redes paralelas como BSC ou Polygon).
+5. Deixe rodando!
+
+DÚVIDAS FREQUENTES:
+
+- P: Preciso deixar a janela preta aberta?
+- R: Não! O "INICIAR.bat" roda tudo de forma invisível. Você pode fechar o navegador e o seu PC continuará tentando quebrar o bloco em segundo plano.
+
+- P: Onde vejo minhas chances reais?
+- R: Pelo Dashboard você acompanha quantos "Tickets" (Hashes) seu PC já processou e validou na CKPool.
+
+- P: Funciona em Mac ou Linux?
+- R: Esta versão é otimizada para Windows.
+
+===================================================
+BOA SORTE NA MINERAÇÃO!
+===================================================

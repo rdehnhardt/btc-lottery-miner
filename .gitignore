@@ -1,0 +1,22 @@
+# Dependências Node.js
+node_modules/
+
+# Logs
+*.log
+btc-miner.log
+
+# Dados do usuário (carteira e configurações pessoais)
+stats.json
+
+# Scripts temporários de geração de ícone
+gen_icon.js
+gen_hd_icon.js
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/

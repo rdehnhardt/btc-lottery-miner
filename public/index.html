@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Software BTC Lottery Miner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#050b14">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+  <div id="soloAlert" class="solo-alert">🚨 UM MINERADOR SOLO ACABOU DE GANHAR 3.125 BTC! 🚨</div>
+  <div class="bg-glow"></div>
+
+  <!-- MODAL DE CONFIGURAÇÃO DE WALLET -->
+  <div class="modal-overlay hidden" id="walletModal" style="display:none;">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-icon">₿</div>
+      <h2>Configure sua Carteira Bitcoin</h2>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:10px;">
+        Cole o endereço da sua carteira BTC abaixo. Ele será salvo e mantido até que você decida trocar.
+      </p>
+      <div style="background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:12px; margin-bottom:15px; font-size:11px; color:var(--btc-gold); line-height:1.8;">
+        ✅ Formatos aceitos:<br>
+        <span style="color:#fff; font-family:'JetBrains Mono';">bc1q...</span> — Native SegWit (recomendado)<br>
+        <span style="color:#fff; font-family:'JetBrains Mono';">bc1p...</span> — Taproot<br>
+        <span style="color:#fff; font-family:'JetBrains Mono';">1...</span> ou <span style="color:#fff; font-family:'JetBrains Mono';">3...</span> — Legacy / SegWit<br><br>
+        ⚠️ <strong>Nunca use o endereço de uma exchange</strong> (Binance, Mercado Bitcoin, etc). Use uma carteira própria como <strong>Electrum, Exodus ou Ledger</strong>.
+      </div>
+      <input type="text" id="walletInput" placeholder="Cole aqui: bc1q... ou bc1p..." spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" style="font-size:12px;">
+      <button onclick="saveWallet()" id="btnSaveWallet" class="btn-primary">🚀 SALVAR E INICIAR MINERAÇÃO</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE COMPARTILHAMENTO -->
+  <div class="modal-overlay hidden" id="shareModal" style="display:none; z-index: 2000;" onclick="closeShareModal()">
+    <div class="modal-box" onclick="event.stopPropagation()" style="max-width: 450px; padding: 25px;">
+      <h2 style="margin-bottom: 15px; font-size: 18px; color: var(--btc-gold);">🎰 SEU BILHETE DE LOTERIA</h2>
+      <img id="ticketPreview" src="" style="width: 100%; border-radius: 10px; border: 2px solid var(--btc-gold); margin-bottom: 15px; box-shadow: 0 0 15px rgba(255,215,0,0.2);">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <a id="btnDownloadTicket" href="#" download="btc-ticket.png" class="btn-primary" style="text-align: center; text-decoration: none; padding: 12px; border-radius: 8px;">📥 BAIXAR IMAGEM</a>
+        <button onclick="shareWhatsApp()" class="btn" style="background: #25D366; color: #FFF; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-family: 'JetBrains Mono'; font-weight: bold; transition: 0.2s;">💬 ENVIAR NO WHATSAPP</button>
+      </div>
+      <button onclick="closeShareModal()" style="margin-top: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline;">Fechar</button>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">🎰</div>
+      <div>
+        <div class="logo-title">SOFTWARE BTC LOTTERY MINER</div>
+        <div class="logo-sub">SOLO JACKPOT TERMINAL</div>
+      </div>
+    </div>
+    <div class="header-right" style="display:flex; align-items:center; gap:15px;">
+      <button class="btn-theme" onclick="toggleTheme()" id="themeBtn" title="Mudar Tema">☀️</button>
+      <div class="price-box">
+        <span class="price-label">BTC/USD</span>
+        <span class="price-val" id="btcUsd">—</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="grid-top">
+      <!-- Main Hashrate & Graph -->
+      <div class="card hashrate-card">
+        <div class="card-title">⚡ VELOCIDADE DA APOSTA (CHANCES DE GANHAR)</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <span class="hash-val" id="hashrate">0.00</span>
+            <span class="hash-unit">MH/s</span>
+          </div>
+          <div class="hash-sub">
+            <span>Pico: <strong id="peakHash" style="color:var(--btc-gold)">0.00</strong></span>
+          </div>
+        </div>
+        
+        <div class="charts-grid">
+          <div class="gauge-wrapper">
+            <div class="gauge-container">
+              <canvas id="gaugeChart"></canvas>
+              <div class="gauge-center-text">
+                <span style="display:block; font-size:12px; color:var(--neon-green); letter-spacing:2px; font-weight:800; text-shadow:0 0 10px rgba(0,255,102,0.5);">VELOCIDADE DA APOSTA</span>
+                <span id="gaugeSpeed" style="font-family:'JetBrains Mono'; font-size:32px; font-weight:800; color:#fff; text-shadow:0 0 15px rgba(255,255,255,0.8);">0</span>
+                <span id="gaugeUnit" style="font-size:14px; color:var(--neon-green); font-weight:800;">MH/s</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="hashChart"></canvas>
+          </div>
+        </div>
+
+        <div class="reward-box">
+          <div class="rb-label">🎰 JACKPOT DO BLOCO</div>
+          <div class="rb-val">3.125 BTC</div>
+          <div class="rb-fiat" id="rewardFiat">~ R$ 0.00</div>
+        </div>
+      </div>
+
+      <!-- Controls & Connection -->
+      <div class="card controls-card">
+        <div class="card-title">💎 MESA DE CONTROLE</div>
+        <div class="controls">
+          <button class="btn btn-primary" onclick="openModal()">🚀 GIRAR A ROLETA (INICIAR)</button>
+          <button class="btn" onclick="openModal()">⚙️ CONFIGURAR CARTEIRA</button>
+          <button class="btn btn-verify" id="btnVerifyPool" onclick="verifyOnPool()" title="Abre a Public Pool com sua carteira para confirmar que está minerando de verdade">
+            🔗 VERIFICAR NA PUBLIC POOL
+          </button>
+          
+          <div style="margin-top: 10px;">
+            <span style="font-size:11px; color:var(--text-muted); font-weight:bold;">USO DE CPU (SOMENTE PC):</span>
+            <select id="powerMode" onchange="changePower()" style="background:var(--bg-main); color:var(--text-main); border:1px solid var(--accent); padding:10px; border-radius:8px; width:100%; margin-top:5px; font-family:'JetBrains Mono'; font-size:12px; cursor:pointer;">
+              <option value="30">Leve (30% - Trabalhar e Assistir)</option>
+              <option value="50" selected>Normal (50% - Recomendado)</option>
+              <option value="80">Forte (80% - Rápido)</option>
+              <option value="100">Máximo (100% - PC Dedicado)</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between; background: rgba(0, 255, 102, 0.05); border: 1px solid rgba(0, 255, 102, 0.2); padding: 10px 15px; border-radius: 8px;">
+            <div style="font-size:12px; color:var(--text-main); font-weight:bold;">
+              💻 INICIAR COM O WINDOWS
+              <div style="font-size:10px; color:var(--text-muted); font-weight:normal; margin-top:2px; line-height:1.4;">Inicia o minerador invisível (no relógio) toda vez que ligar o PC</div>
+            </div>
+            <label class="switch" style="position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0;">
+              <input type="checkbox" id="startupToggle" onchange="toggleStartup()" style="opacity:0; width:0; height:0;">
+              <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--accent); transition:.4s; border-radius:34px;">
+                <span class="slider-ball" style="position:absolute; content:''; height:16px; width:16px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="status-panel">
+          <div class="card-title">🎲 STATUS DA LOTERIA SOLO</div>
+          
+          <div class="info-row">
+            <span>Status:</span>
+            <strong id="minerStatus" style="color:var(--neon-red)">AGUARDANDO APOSTA</strong>
+          </div>
+          
+          <div class="info-row">
+            <span>Hardware:</span>
+            <strong style="color:#fff"><span id="cpuName">Processador</span> (<span id="cpuThreads">4</span>x)</strong>
+          </div>
+
+          <div class="status-row">
+            <span>Pool de Loteria:</span>
+            <span class="status-value" style="color:#fff; display:flex; align-items:center; gap:6px;">
+              <span id="poolDot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#555; flex-shrink:0;"></span>
+              public-pool.io:21496
+            </span>
+          </div>
+          
+          <div class="info-row">
+            <span>Uptime (Atividade):</span>
+            <strong style="color:#00d278" id="uptimeMiner">0h 0m</strong>
+          </div>
+          
+          <div class="info-row">
+            <span>Blocos Minerados:</span>
+            <strong style="color:var(--btc-orange)">0 (Ainda)</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 Stats Grid (New Info) -->
+    <div class="stats-grid">
+      <div class="stat-item" data-tip="Número do bloco atual sendo minerado pela rede Bitcoin. A cada bloco encontrado, toda a rede avança. Você compete por todos eles em tempo real.">
+        <div class="st-icon">📦</div>
+        <div class="st-label">BLOCO ATUAL (REDE)</div>
+        <div class="st-val new-block" id="blockHeight">—</div>
+        <div class="st-sub">Sincronizado</div>
+      </div>
+
+      <div class="stat-item" data-tip="Dificuldade atual da rede Bitcoin. Quanto maior, mais difícil é encontrar um bloco. Suas chances de ganhar são de 1 em bilhões, mas o prêmio é de 3.125 BTC.">
+        <div class="st-icon">🎯</div>
+        <div class="st-label">DIFICULDADE GLOBAL</div>
+        <div class="st-val" id="networkDiff" style="font-size:16px">—</div>
+        <div class="st-sub">Chances 1 em Bilhões</div>
+      </div>
+
+      <div class="stat-item" data-tip="O Halving corta ao meio a recompensa dos mineradores. Após o próximo, o prêmio cairá de 3.125 para 1.5625 BTC. Minere agora enquanto a recompensa ainda está alta!">
+        <div class="st-icon">⏳</div>
+        <div class="st-label">PRÓXIMO HALVING</div>
+        <div class="st-val" id="halvingDays">—</div>
+        <div class="st-sub">Restam <span id="halvingBlocks">—</span> Blocos</div>
+      </div>
+
+      <div class="stat-item" data-tip="Pool de mineração que encontrou o último bloco na rede. Grandes pools como Foundry e AntPool dominam, por isso a mineração solo é chamada de loteria — mas qualquer um pode ganhar!">
+        <div class="st-icon">🏭</div>
+        <div class="st-label">ÚLTIMO BLOCO MINERADO</div>
+        <div class="st-val" id="lastPool" style="font-size:16px">—</div>
+        <div class="st-sub" style="color:var(--text-muted)">Pool ganhadora na rede</div>
+      </div>
+
+      <div class="stat-item" data-tip="Cada 'ticket' é um hash enviado e aceito pela Public Pool. Quanto mais tickets por segundo, maiores são suas chances de ganhar o Jackpot de 3.125 BTC.">
+        <div class="st-icon">🎫</div>
+        <div class="st-label">TICKETS (TENTATIVAS)</div>
+        <div class="st-val" id="validShares">—</div>
+        <div class="st-sub">Hashes aceitos na Roleta</div>
+      </div>
+
+      <div class="stat-item" data-tip="O hash mais próximo que você chegou de ganhar o Jackpot. Quanto maior esse número, mais perto você chegou do bloco. Se um dia chegar a 2^256, você ganhou 3.125 BTC!">
+        <div class="st-icon">🏆</div>
+        <div class="st-label">SUA MELHOR TENTATIVA</div>
+        <div class="st-val" id="bestShare">—</div>
+        <div class="st-sub">Share de maior dificuldade</div>
+      </div>
+    </div>
+
+    <!-- PROVA DE TRABALHO -->
+    <div style="margin-top: 30px; padding: 20px 25px; background: rgba(0,255,102,0.04); border: 1px solid rgba(0,255,102,0.25); border-radius: 15px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+        <span style="font-size:20px;">🔬</span>
+        <span style="font-size:13px; font-weight:800; color:var(--neon-green); letter-spacing:2px;">PROVA DE TRABALHO — MINERAÇÃO 100% REAL</span>
+        <span style="background:#00d278; color:#000; font-size:10px; font-weight:900; padding:3px 8px; border-radius:20px; letter-spacing:1px;">VERIFICÁVEL</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px;">
+        <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:12px;">
+          <div style="color:var(--text-muted); font-size:10px; letter-spacing:1px; margin-bottom:4px;">⚙️ MOTOR DE MINERAÇÃO</div>
+          <div style="color:#fff; font-weight:bold; font-family:'JetBrains Mono';">cpuminer-sse2.exe</div>
+          <div style="color:var(--text-muted); font-size:10px; margin-top:3px;">Pooler's CPUMiner — Open Source (GitHub)</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:12px;">
+          <div style="color:var(--text-muted); font-size:10px; letter-spacing:1px; margin-bottom:4px;">🔗 CONEXÃO STRATUM (REAL)</div>
+          <div style="color:#00d278; font-weight:bold; font-family:'JetBrains Mono'; font-size:11px;">stratum+tcp://public-pool.io:21496</div>
+          <div style="color:var(--text-muted); font-size:10px; margin-top:3px;">Protocolo padrão de mineração Bitcoin</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:12px;">
+          <div style="color:var(--text-muted); font-size:10px; letter-spacing:1px; margin-bottom:4px;">🧠 ALGORITMO</div>
+          <div style="color:#fff; font-weight:bold; font-family:'JetBrains Mono';">SHA-256d</div>
+          <div style="color:var(--text-muted); font-size:10px; margin-top:3px;">Algoritmo nativo e oficial da rede Bitcoin</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:12px;">
+          <div style="color:var(--text-muted); font-size:10px; letter-spacing:1px; margin-bottom:4px;">💻 THREADS ATIVOS</div>
+          <div style="color:var(--btc-gold); font-weight:bold; font-family:'JetBrains Mono';" id="proofThreads">—</div>
+          <div style="color:var(--text-muted); font-size:10px; margin-top:3px;">Núcleos do seu CPU trabalhando</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; padding:10px 14px; background:rgba(255,215,0,0.06); border:1px solid rgba(255,215,0,0.2); border-radius:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div style="font-size:11px; color:var(--text-muted);">
+          🔍 <strong style="color:#fff;">Verifique ao vivo:</strong> Abra o link abaixo e veja seu worker ativo com hashrate real na Public Pool
+        </div>
+        <a id="proofPoolLink" href="https://web.public-pool.io" target="_blank" style="background:linear-gradient(135deg,rgba(0,255,102,0.2),rgba(0,255,102,0.05)); border:1px solid rgba(0,255,102,0.4); color:var(--neon-green); padding:8px 14px; border-radius:8px; font-family:'JetBrains Mono'; font-size:11px; font-weight:bold; text-decoration:none; white-space:nowrap;">
+          🌐 ABRIR PUBLIC POOL →
+        </a>
+      </div>
+      <div style="margin-top:10px; font-size:10px; color:var(--text-muted); line-height:1.6;">
+        ⚠️ <strong>Este NÃO é um simulador.</strong> O processo <code style="background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px;">cpuminer-sse2.exe</code> está sendo executado no seu computador, conectado à rede real do Bitcoin via protocolo Stratum, gerando hashes SHA-256d reais. Cada hash enviado e aceito pela pool é um "ticket" legítimo na loteria do bloco.
+      </div>
+    </div>
+
+    <div class="educational-section" style="margin-top: 20px; padding: 25px; background: rgba(0, 255, 102, 0.05); border: 1px solid rgba(0, 255, 102, 0.2); border-radius: 15px; text-align: left;">
+      <h3 style="color: var(--neon-green); margin-bottom: 10px; font-size: 14px; letter-spacing: 1px;">🌍 COMO VOCÊ ESTÁ AJUDANDO A REDE DO BITCOIN?</h3>
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 10px;">
+        Ao rodar este terminal, seu computador se torna um <strong>Nó Minerador Independente</strong> (Solo Miner). Mesmo que as chances de encontrar um bloco sozinho sejam como uma "loteria", cada tentativa matemática (hash) gerada ajuda a proteger a rede descentralizada do Bitcoin.
+      </p>
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+        Quanto mais pessoas comuns rodam pequenos mineradores em casa, mais difícil fica para grandes corporações ou governos dominarem o processamento global. Você está ajudando a manter o Bitcoin verdadeiramente livre, seguro e descentralizado, e pode ser recompensado com o Jackpot integral da rede pelo seu esforço!
+      </p>
+    </div>
+
+
+    <!-- QR Code + Compartilhar -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:25px;">
+
+      <!-- QR Code -->
+      <div style="background:var(--bg-card); border:1px solid rgba(0,255,102,0.2); border-radius:15px; padding:20px; text-align:center; backdrop-filter:blur(10px);">
+        <div style="font-size:12px; color:var(--neon-green); font-weight:800; letter-spacing:1px; margin-bottom:12px;">📱 ACESSO PELO CELULAR</div>
+        <img id="qrCodeImg" src="" alt="QR Code" style="width:140px; height:140px; border-radius:10px; display:none; margin:0 auto;">
+        <div id="qrCodePlaceholder" style="width:140px; height:140px; background:rgba(0,255,102,0.05); border:1px dashed rgba(0,255,102,0.3); border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:11px; color:var(--text-muted);">Carregando...</div>
+        <div id="qrCodeUrl" style="font-size:10px; color:var(--text-muted); margin-top:8px; word-break:break-all;"></div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Aponte a câmera do celular para abrir o painel na mesma rede WiFi</div>
+      </div>
+
+      <!-- Compartilhar -->
+      <div style="background:var(--bg-card); border:1px solid rgba(255,215,0,0.2); border-radius:15px; padding:20px; text-align:center; backdrop-filter:blur(10px);">
+        <div style="font-size:12px; color:var(--btc-gold); font-weight:800; letter-spacing:1px; margin-bottom:12px;">📣 COMPARTILHAR MINHA MINERAÇÃO</div>
+        <div style="font-size:32px; margin-bottom:10px;">🎰</div>
+        <p style="font-size:11px; color:var(--text-muted); line-height:1.6; margin-bottom:16px;">
+          Compartilhe seu progresso e mostre que você está contribuindo para a rede Bitcoin!
+        </p>
+        <button onclick="shareStats()" style="background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,215,0,0.05)); border:1px solid rgba(255,215,0,0.5); color:var(--btc-gold); padding:12px 20px; border-radius:10px; font-family:'JetBrains Mono'; font-size:12px; font-weight:800; cursor:pointer; width:100%; letter-spacing:1px; transition:all 0.2s;" onmouseover="this.style.boxShadow='0 0 20px rgba(255,215,0,0.3)'" onmouseout="this.style.boxShadow='none'">
+          📤 COMPARTILHAR STATS
+        </button>
+        <button onclick="copyStats()" id="btnCopyStats" style="background:transparent; border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); padding:10px 20px; border-radius:10px; font-family:'JetBrains Mono'; font-size:11px; cursor:pointer; width:100%; margin-top:8px; transition:all 0.2s;">
+          📋 COPIAR TEXTO
+        </button>
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:11px; color:var(--text-muted); margin-top: 20px;">
+      ⚠️ Aviso: Este software conecta o seu computador diretamente à rede Bitcoin como um minerador independente (Solo Mining). Cada cálculo gerado é um "bilhete" real na loteria do bloco. As chances são proporcionais ao seu hardware — quanto mais rápido o PC, mais bilhetes por segundo.<br>
+      
+      <!-- Seção de Doação Wallet of Satoshi -->
+      <div style="margin: 20px auto; padding: 20px; background: rgba(255,153,0,0.05); border: 1px solid rgba(255,153,0,0.2); border-radius: 12px; max-width: 400px; display: flex; flex-direction: column; align-items: center;">
+        <div style="font-size: 24px; margin-bottom: 5px;">⚡</div>
+        <div style="color: #FF9900; font-weight: bold; font-size: 13px; letter-spacing: 1px; margin-bottom: 10px;">APOIE ESTE PROJETO OPEN-SOURCE</div>
+        <div style="color: var(--text-muted); font-size: 11px; line-height: 1.6; margin-bottom: 15px; text-align: center;">
+          Este software foi criado para a comunidade Bitcoin. Ele transforma qualquer PC com Windows em um minerador solo real, conectado à Public Pool via protocolo Stratum, gerando hashes SHA-256d reais 24h por dia. Se ele te ajudou a entrar na loteria do Bitcoin, considere apoiar com qualquer valor em Satoshis via Lightning! ⚡
+        </div>
+        
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkzmn8v4kxjcm3w45kcape8q0kt3hq&bgcolor=050b14&color=FF9900&margin=0" alt="Lightning QR Code" style="border-radius: 10px; margin-bottom: 15px; border: 2px solid rgba(255,153,0,0.3);">
+        
+        <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; font-family: 'JetBrains Mono'; font-size: 11px; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box;">
+          <span id="donationAddress" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkzmn8v4kxjcm3w45kcape8q0kt3hq</span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('donationAddress').innerText); alert('Código LNURL copiado com sucesso!');" style="background: #FF9900; border: none; color: #000; border-radius: 4px; cursor: pointer; padding: 6px 10px; font-size: 10px; font-weight: bold; transition: 0.2s;">COPIAR</button>
+        </div>
+      </div>
+      
+      <!-- Botão Telegram -->
+      <a href="https://t.me/Degenzone21" target="_blank" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #24A1DE; color: #fff; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-weight: bold; font-size: 13px; margin: 10px auto 25px auto; transition: 0.2s; box-shadow: 0 4px 15px rgba(36, 161, 222, 0.3);">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.11.03-1.84 1.18-5.2 3.45-.49.34-.93.5-1.33.49-.44-.01-1.28-.25-1.9-.45-.77-.25-1.38-.38-1.33-.81.03-.22.34-.45.93-.68 3.65-1.59 6.08-2.6 7.3-3.11 3.47-1.44 4.19-1.69 4.66-1.7.11 0 .35.03.5.15.12.1.16.24.18.34.01.07.02.16.01.27z"/>
+        </svg>
+        PARTICIPE DO CANAL NO TELEGRAM
+      </a>
+
+      <span style="display:block; margin-top:10px; color:var(--btc-orange); font-weight:bold; letter-spacing:1px;">CRIADO POR EDUCABRAL</span>
+    </div>
+
+  </main>
+
+  <script src="app2.js?v=12"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+      
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
+</body>
+</html>
