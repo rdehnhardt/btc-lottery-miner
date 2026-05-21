@@ -1,9 +1,10 @@
-const CACHE_NAME = 'btc-miner-v8';
+const CACHE_NAME = 'btc-miner-v9';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
-  '/app2.js'
+  '/app2.js',
+  '/pixgo-mascote.png'
 ];
 
 self.addEventListener('install', (e) => {
