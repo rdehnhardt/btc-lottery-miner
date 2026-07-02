@@ -1,0 +1,13 @@
+.git
+node_modules
+stats.json
+btc-miner.log
+data
+
+# Artefatos Windows/desktop — inúteis no container (~35MB)
+miner/*.exe
+miner/*.dll
+INICIAR.bat
+INICIAR.sh
+tray_icon.ps1
+LEIA-ME_PRIMEIRO.txt

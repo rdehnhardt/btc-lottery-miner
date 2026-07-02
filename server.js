@@ -8,7 +8,7 @@ let cachedCpuInfo = null;
 si.cpu().then(c => cachedCpuInfo = c).catch(() => null);
 
 const app = express();
-const PORT = 3500; 
+const PORT = parseInt(process.env.PORT) || 3500;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,7 +26,9 @@ function localhostOnly(req, res, next) {
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-const STATS_FILE = path.join(__dirname, 'stats.json');
+// DATA_DIR permite persistir o stats.json fora do container (volume Docker)
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 function loadStats() {
   try { if (fs.existsSync(STATS_FILE)) return JSON.parse(fs.readFileSync(STATS_FILE, 'utf8')); } catch (e) {}
@@ -36,6 +38,14 @@ function saveStats(s) {
   try { fs.writeFileSync(STATS_FILE, JSON.stringify(s, null, 2)); } catch (e) {}
 }
 let persistentStats = loadStats();
+
+// Em deploy remoto (Docker/Dokploy) a wallet vem por variável de ambiente,
+// já que as APIs de configuração só aceitam localhost
+if (process.env.WALLET) persistentStats.wallet = process.env.WALLET.trim();
+if (process.env.POWER) {
+  const envPower = parseInt(process.env.POWER);
+  if (Number.isInteger(envPower) && envPower >= 1 && envPower <= 100) persistentStats.power = envPower;
+}
 
 // Controle do Minerador Real (cpuminer)
 let minerProcess = null;
@@ -86,16 +96,26 @@ function startMinerReal(wallet, power = 50) {
   const safeHostname = os.hostname().replace(/\W/g, '');
   const poolWallet = wallet.includes('.') ? wallet : `${wallet}.${safeHostname}`;
 
-  minerProcess = spawn(minerPath, [
-    '-a', 'sha256d',
-    '-o', 'stratum+tcp://public-pool.io:21496',
-    '-u', poolWallet,
-    '-p', 'x',
-    '-t', threads.toString()
-  ], { detached: true, stdio: 'ignore' });
+  try {
+    minerProcess = spawn(minerPath, [
+      '-a', 'sha256d',
+      '-o', 'stratum+tcp://public-pool.io:21496',
+      '-u', poolWallet,
+      '-p', 'x',
+      '-t', threads.toString()
+    ], { detached: true, stdio: 'ignore' });
 
-  minerStartTime = Date.now();
-  minerProcess.unref();
+    minerProcess.on('error', (err) => {
+      console.error(`[MINER] Falha ao iniciar ${minerExec}: ${err.message}`);
+      minerProcess = null;
+    });
+
+    minerStartTime = Date.now();
+    minerProcess.unref();
+  } catch (err) {
+    console.error(`[MINER] Falha ao iniciar ${minerExec}: ${err.message}`);
+    minerProcess = null;
+  }
 }
 
 // WATCHDOG inteligente: só reinicia após 3 falhas consecutivas (evita criar sessões desnecessárias na pool)
@@ -148,9 +168,12 @@ app.post('/api/setup/wallet', localhostOnly, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/setup/power', (req, res) => {
-  const { power } = req.body;
-  persistentStats.power = parseInt(power);
+app.post('/api/setup/power', localhostOnly, (req, res) => {
+  const power = parseInt(req.body.power);
+  if (!Number.isInteger(power) || power < 1 || power > 100) {
+    return res.status(400).json({ error: 'Potência inválida (1-100)' });
+  }
+  persistentStats.power = power;
   saveStats(persistentStats);
   
   // Reinicia com a nova força

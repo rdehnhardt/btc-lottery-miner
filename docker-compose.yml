@@ -1,0 +1,21 @@
+services:
+  btc-lottery-miner:
+    build: .
+    # Necessário em hosts arm64 (Apple Silicon); em VPS amd64 pode remover
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "3500:3500"
+    environment:
+      # Sua carteira BTC — obrigatória em deploy remoto, pois a configuração
+      # via painel web só funciona a partir de localhost
+      WALLET: ${WALLET:?Defina WALLET no .env ou nas variáveis do Dokploy}
+      # Percentual de threads da CPU usadas pelo minerador (1-100)
+      POWER: ${POWER:-50}
+    volumes:
+      - miner-data:/data
+    # Limite opcional de CPU do container inteiro (além do POWER):
+    # cpus: "2.0"
+
+volumes:
+  miner-data:
